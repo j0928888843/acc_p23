@@ -12,4 +12,9 @@
 # <path-to-spark-submit> spark_sparse_lr.py /kdda 20216830 10 2e-6 loss_kdda
 PROJ_PATH=`dirname $0`
 
-/root/spark/bin/spark-submit $PROJ_PATH/spark_sparse_lr.py $1 $2 $3 $4 $5
+# --total-executor-cores 20
+# --conf spark.default.parallelism=63
+/root/spark/bin/spark-submit --driver-memory 10g --executor-memory 10g \
+ --conf spark.driver.cores=4 \
+ --conf spark.driver.maxResultSize=10g \
+$PROJ_PATH/spark_sparse_lr.py $1 $2 $3 $4 $5

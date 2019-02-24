@@ -11,10 +11,13 @@
 # # For example, run this program with: (/kdd10)
 # <path-to-spark-submit> spark_sparse_lr.py /kdda 20216830 10 2e-6 loss_kdda
 PROJ_PATH=`dirname $0`
-
+# echo "hello"
+# echo $PROJ_PATH
+# echo $1
+#  --master spark://ip-172-31-11-159.ec2.internal:7077 \
 # --total-executor-cores 20
 # --conf spark.default.parallelism=63
-/root/spark/bin/spark-submit --driver-memory 10g --executor-memory 10g \
+/root/spark/bin/spark-submit --driver-memory 5g --executor-memory 5g \
  --conf spark.driver.cores=4 \
  --conf spark.driver.maxResultSize=10g \
 $PROJ_PATH/spark_sparse_lr.py $1 $2 $3 $4 $5

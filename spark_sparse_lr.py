@@ -315,8 +315,8 @@ if __name__ == "__main__":
     reg_param = 0.01
 
     # total number of cores of your Spark slaves
-    # num_cores = 64
-    num_cores = 64 * 2 - 1
+    num_cores = 4
+    # num_cores = 64 * 2 - 1
     # for simplicity, the number of partitions is hardcoded
     # the number of partitions should be configured based on data size
     # and number of cores in your cluster
@@ -353,6 +353,9 @@ if __name__ == "__main__":
     # force cur_rdd to be created
     num_cur_rdd = cur_rdd.count()
 
+    # force cur_samples_rdd to be created
+    num_cur_samples_rdd = cur_samples_rdd.count()
+
     for iteration in range(0, num_iterations):
         # broadcast weights array to workers
         # weights_array_bc = sc.broadcast(weights_array)
@@ -379,13 +382,15 @@ if __name__ == "__main__":
             .partitionBy(num_partitions)
 
         result_rdd = weight_update_rdd.join(invert_index_rdd, num_partitions)
-        samples_update_rdd = result_rdd.flatMap(to_sample_update_pair).reduceByKey(add_features)
+        samples_update_rdd = result_rdd.flatMap(to_sample_update_pair).reduceByKey(add_features, numPartitions=num_partitions)
 
         cur_rdd = cur_rdd.union(samples_update_rdd).reduceByKey(add_array_element).partitionBy(num_partitions)
 
         cur_samples_rdd = samples_rdd.join(cur_rdd, num_partitions)
 
-        cur_num_samples = cur_samples_rdd.count()
+        # force cur_rdd and cur_samples_rdd to be created
+        num_cur_rdd = cur_rdd.count()
+        num_cur_samples_rdd = cur_samples_rdd.count()
         # ans = cur_samples_rdd.take(1)
         # ans2 = cur_rdd.take(1)
 

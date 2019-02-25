@@ -316,7 +316,7 @@ if __name__ == "__main__":
 
     # total number of cores of your Spark slaves
     # num_cores = 64
-    num_cores = 4
+    num_cores = 64 * 2 - 1
     # for simplicity, the number of partitions is hardcoded
     # the number of partitions should be configured based on data size
     # and number of cores in your cluster
@@ -337,14 +337,22 @@ if __name__ == "__main__":
 
     invert_index_rdd = samples_rdd.flatMap(sample_to_weight_sample_list_pair).reduceByKey(list_add) \
         .partitionBy(num_partitions).persist(pyspark.storagelevel.StorageLevel.MEMORY_AND_DISK)
+
+    # force invert_index_rdd to be created
+    num_invert_index = invert_index_rdd.count()
+
     my_loss_list = []
     loss_list = []
     init_update_rdd = samples_rdd.map(init_sample, preservesPartitioning=True).partitionBy(num_partitions)
     cur_samples_rdd = samples_rdd.join(init_update_rdd, num_partitions)
-    cur_samples_rdd_test = cur_samples_rdd.map(test).collect()
-    sample_part_num = samples_rdd.getNumPartitions()
-    part_num = cur_samples_rdd.getNumPartitions()
+    # cur_samples_rdd_test = cur_samples_rdd.map(test).collect()
+    # sample_part_num = samples_rdd.getNumPartitions()
+    # part_num = cur_samples_rdd.getNumPartitions()
     cur_rdd = init_update_rdd.map(lambda x: x)
+
+    # force cur_rdd to be created
+    num_cur_rdd = cur_rdd.count()
+
     for iteration in range(0, num_iterations):
         # broadcast weights array to workers
         # weights_array_bc = sc.broadcast(weights_array)

@@ -347,16 +347,19 @@ if __name__ == "__main__":
     cur_rdd = init_update_rdd.map(lambda x: x)
     for iteration in range(0, num_iterations):
         # broadcast weights array to workers
-        weights_array_bc = sc.broadcast(weights_array)
+        # weights_array_bc = sc.broadcast(weights_array)
         # compute gradient descent updates in parallel
-        loss_updates_rdd = samples_rdd.mapPartitions(gd_partition_key)
+
+        # loss_updates_rdd = samples_rdd.mapPartitions(gd_partition_key)
+
         # collect and sum up the and updates cross-entropy loss over all
         # partitions
-        ret = loss_updates_rdd.reduce(lambda x, y: (x[0] + y[0], x[1] + y[1]))
-        loss = ret[0]
-        updates = ret[1]
-        loss_list.append(loss)
-        weights_array += updates.toarray().squeeze()
+
+        # ret = loss_updates_rdd.reduce(lambda x, y: (x[0] + y[0], x[1] + y[1]))
+        # loss = ret[0]
+        # updates = ret[1]
+        # loss_list.append(loss)
+        # weights_array += updates.toarray().squeeze()
 
         # loss_updates_rdd_test = samples_rdd.mapPartitions(gd_partition_key_test_old)
         loss_updates_rdd_test = cur_samples_rdd.mapPartitions(gd_partition_key_test, preservesPartitioning=True)
@@ -374,17 +377,18 @@ if __name__ == "__main__":
 
         cur_samples_rdd = samples_rdd.join(cur_rdd, num_partitions)
 
+        cur_num_samples = cur_samples_rdd.count()
         # ans = cur_samples_rdd.take(1)
         # ans2 = cur_rdd.take(1)
 
         # decay step size to ensure convergence
         step_size *= 0.95
-        print "iteration: %d, cross-entropy loss: %f" % (iteration, loss)
+        print "iteration: %d, cross-entropy loss: %f" % (iteration, my_loss)
         # the lsat line of for loop is destroy()
-        weights_array_bc.destroy()
-
+        # weights_array_bc.destroy()
+    loss_list = my_loss_list
     print '=============================================='
-    print 'loss_list', loss_list
+    # print 'loss_list', loss_list
     print 'my_loss_list', my_loss_list
     print '=============================================='
     # print 'cur_samples_rdd_1', ans

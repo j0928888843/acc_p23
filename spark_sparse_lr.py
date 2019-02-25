@@ -48,7 +48,7 @@ def parse_line(line):
 
 
 def parse_line_key(line):
-    # key = hash(line)
+
     # gen a uniqe key for each sample
     key = hash(line + str(random.randint(1, 4294967295)))
     parts = line.split()
@@ -170,48 +170,6 @@ def gd_partition_key(samples):
     return [(cross_entropy_loss, accumulated_updates)]
 
 
-# def gd_partition_key_test_old(samples):
-#     local_updates = defaultdict(float)
-#     local_weights_array = weights_array_bc.value
-#     cross_entropy_loss = 0
-
-#     # compute and accumulate updates for each data sample in the partition
-#     for sample in samples:
-#         (key, value) = sample
-#         label = value[0]
-#         features = value[1]
-#         feature_ids = features[0]
-#         feature_vals = features[1]
-#         # fetch the relevant weights for this sample as a numpy array
-#         local_weights = np.take(local_weights_array, feature_ids)
-#         # given the current weights, the probability of this sample belonging to
-#         # class '1'
-#         pred = sigmoid(feature_vals.dot(local_weights))
-#         diff = label - pred
-#         # the L2-regularlized gradients
-#         gradient = diff * feature_vals - reg_param * local_weights
-#         sample_update = step_size * gradient
-
-#         update_list = []
-#         for i in range(0, feature_ids.size):
-#             local_updates[feature_ids[i]] += sample_update[i]
-
-#         # compute the cross-entropy loss, which is an indirect measure of the
-#         # objective function that the gradient descent algorithm optimizes for
-#         if label == 1:
-#             cross_entropy_loss -= safe_log(pred)
-#         else:
-#             cross_entropy_loss -= safe_log(1 - pred)
-#     # accumulated_updates = sps.csr_matrix(
-#     #     (local_updates.values(),
-#     #      local_updates.keys(),
-#     #      [0, len(local_updates)]),
-#     #     shape=(1, num_features))
-#     for feature_id, local_update in local_updates.iteritems():
-#         update_list.append((feature_id, local_update))
-#     return [(cross_entropy_loss, update_list)]
-
-
 def gd_partition_key_test(samples):
     local_updates = defaultdict(float)
     # local_weights_array = weights_array_bc.value
@@ -250,11 +208,7 @@ def gd_partition_key_test(samples):
             cross_entropy_loss -= safe_log(pred)
         else:
             cross_entropy_loss -= safe_log(1 - pred)
-    # accumulated_updates = sps.csr_matrix(
-    #     (local_updates.values(),
-    #      local_updates.keys(),
-    #      [0, len(local_updates)]),
-    #     shape=(1, num_features))
+
     result_update_list = []
     for feature_id, local_update in local_updates.iteritems():
         result_update_list.append((feature_id, local_update))
@@ -284,8 +238,7 @@ def sample_to_weight_sample_list_pair(t):
 
     # key = hash(sample string)
     # value = (label, (np.array(feature_ids), np.array(feature_vals)))
-    # label = v[0]
-    # features = v[1]
+
     label, features = v
     feature_ids = features[0]
     # veature_vals = features[1]
@@ -376,23 +329,19 @@ if __name__ == "__main__":
     # the RDD that contains parsed data samples, which are reused during
     # training
     samples_rdd = text_rdd.map(parse_line_key, preservesPartitioning=True) \
-        .persist(pyspark.storagelevel.StorageLevel.MEMORY_AND_DISK)
+        .partitionBy(num_partitions).persist(pyspark.storagelevel.StorageLevel.MEMORY_AND_DISK)
     # force samples_rdd to be created
     num_samples = samples_rdd.count()
     # initialize weights as a local array
     weights_array = np.ones(num_features) * weight_init_value
 
     invert_index_rdd = samples_rdd.flatMap(sample_to_weight_sample_list_pair).reduceByKey(list_add) \
-        .persist(pyspark.storagelevel.StorageLevel.MEMORY_AND_DISK)
+        .partitionBy(num_partitions).persist(pyspark.storagelevel.StorageLevel.MEMORY_AND_DISK)
     my_loss_list = []
     loss_list = []
-    # weight_update_list = []
-    init_update_rdd = samples_rdd.map(init_sample)
-    # init_update_rdd_w = init_update_rdd.take(2)
-    cur_samples_rdd = samples_rdd.join(init_update_rdd)
+    init_update_rdd = samples_rdd.map(init_sample, preservesPartitioning=True).partitionBy(num_partitions)
+    cur_samples_rdd = samples_rdd.join(init_update_rdd, num_partitions)
     cur_samples_rdd_test = cur_samples_rdd.map(test).collect()
-    # key_count = cur_samples_rdd.count()
-    # key = cur_samples_rdd.collect()
     sample_part_num = samples_rdd.getNumPartitions()
     part_num = cur_samples_rdd.getNumPartitions()
     cur_rdd = init_update_rdd.map(lambda x: x)
@@ -410,24 +359,24 @@ if __name__ == "__main__":
         weights_array += updates.toarray().squeeze()
 
         # loss_updates_rdd_test = samples_rdd.mapPartitions(gd_partition_key_test_old)
-        loss_updates_rdd_test = cur_samples_rdd.mapPartitions(gd_partition_key_test)
+        loss_updates_rdd_test = cur_samples_rdd.mapPartitions(gd_partition_key_test, preservesPartitioning=True)
         my_loss = loss_updates_rdd_test.map(tuple_to_loss_only).reduce(lambda x, y: x + y)
         my_loss_list.append(my_loss)
-        weight_update_rdd = loss_updates_rdd_test.map(tuple_to_list_only) \
+        weight_update_rdd = loss_updates_rdd_test.map(tuple_to_list_only, preservesPartitioning=True) \
             .flatMap(lambda x: x) \
-            .reduceByKey(lambda x, y: x + y) \
-            # .take(5)
-        # weight_update_list.append(weight_update)
-        result_rdd = weight_update_rdd.join(invert_index_rdd)
+            .reduceByKey(lambda x, y: x + y, numPartitions=num_partitions) \
+            .partitionBy(num_partitions)
+
+        result_rdd = weight_update_rdd.join(invert_index_rdd, num_partitions)
         samples_update_rdd = result_rdd.flatMap(to_sample_update_pair).reduceByKey(add_features)
 
-        cur_rdd = cur_rdd.union(samples_update_rdd).reduceByKey(add_array_element)
+        cur_rdd = cur_rdd.union(samples_update_rdd).reduceByKey(add_array_element).partitionBy(num_partitions)
 
-        # cur_samples_rdd = samples_rdd.join(samples_update_rdd)
-        cur_samples_rdd = samples_rdd.join(cur_rdd)
+        cur_samples_rdd = samples_rdd.join(cur_rdd, num_partitions)
 
-        ans = cur_samples_rdd.take(1)
-        ans2 = cur_rdd.take(1)
+        # ans = cur_samples_rdd.take(1)
+        # ans2 = cur_rdd.take(1)
+
         # decay step size to ensure convergence
         step_size *= 0.95
         print "iteration: %d, cross-entropy loss: %f" % (iteration, loss)
@@ -437,16 +386,11 @@ if __name__ == "__main__":
     print '=============================================='
     print 'loss_list', loss_list
     print 'my_loss_list', my_loss_list
-    # print 'invert_index_rdd', invert_index_rdd
-
     print '=============================================='
-    # print 'init_update_rdd', init_update_rdd_w
-    # print ' cur_samples_rdd_test', cur_samples_rdd_test[1]
-    print '=============================================='
-    print 'cur_samples_rdd_1', ans
-    print 'cur_samples_rdd_2', ans2
-    print 'part_num', part_num
-    print 'sample_part_num', sample_part_num
+    # print 'cur_samples_rdd_1', ans
+    # print 'cur_samples_rdd_2', ans2
+    # print 'part_num', part_num
+    # print 'sample_part_num', sample_part_num
     print '=============================================='
     # write the cross-entropy loss to a local file
     with open(loss_file, "w") as loss_fobj:

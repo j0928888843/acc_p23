@@ -270,7 +270,8 @@ def to_sample_update_pair(t):
     results = []  # each element is ( hash(sample), feature_id:update_value )
     for hash_sample in hash_sample_list:
         a = np.array(feature_id)
-        b = np.array(float(update_value))
+        # b = np.array(float(update_value))
+        b = np.array(update_value)
         results.append((hash_sample, (a, b)))
 
     return results
@@ -333,7 +334,7 @@ if __name__ == "__main__":
     # force samples_rdd to be created
     num_samples = samples_rdd.count()
     # initialize weights as a local array
-    weights_array = np.ones(num_features) * weight_init_value
+    # weights_array = np.ones(num_features) * weight_init_value
 
     invert_index_rdd = samples_rdd.flatMap(sample_to_weight_sample_list_pair).reduceByKey(list_add) \
         .partitionBy(num_partitions).persist(pyspark.storagelevel.StorageLevel.MEMORY_AND_DISK)
@@ -343,18 +344,19 @@ if __name__ == "__main__":
 
     my_loss_list = []
     loss_list = []
-    init_update_rdd = samples_rdd.map(init_sample, preservesPartitioning=True).partitionBy(num_partitions)
-    cur_samples_rdd = samples_rdd.join(init_update_rdd, num_partitions)
+    cur_rdd = samples_rdd.map(init_sample, preservesPartitioning=True).partitionBy(num_partitions)
+    cur_samples_rdd = samples_rdd.join(cur_rdd, num_partitions)
     # cur_samples_rdd_test = cur_samples_rdd.map(test).collect()
     # sample_part_num = samples_rdd.getNumPartitions()
     # part_num = cur_samples_rdd.getNumPartitions()
-    cur_rdd = init_update_rdd.map(lambda x: x)
-
-    # force cur_rdd to be created
-    num_cur_rdd = cur_rdd.count()
+    #
+    # cur_rdd = init_update_rdd.map(lambda x: x)
 
     # force cur_samples_rdd to be created
     num_cur_samples_rdd = cur_samples_rdd.count()
+
+    # force cur_rdd to be created
+    num_cur_rdd = cur_rdd.count()
 
     for iteration in range(0, num_iterations):
         # broadcast weights array to workers

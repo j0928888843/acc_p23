@@ -269,9 +269,9 @@ def to_sample_update_pair(t):
     hash_sample_list = value[1]
     results = []  # each element is ( hash(sample), feature_id:update_value )
     for hash_sample in hash_sample_list:
-        a = np.array(feature_id)
+        a = feature_id
         # b = np.array(float(update_value))
-        b = np.array(update_value)
+        b = update_value
         results.append((hash_sample, (a, b)))
 
     return results
@@ -297,6 +297,18 @@ def add_array_element(ta, tb):
     feature_ids_b, update_values_b = tb
     update_values_sum = update_values_a + update_values_b
 
+    result = (feature_ids_a, update_values_sum)
+    return result
+
+
+def merge_features(value):
+    ta, tb = value
+    feature_ids_a, update_values_a = ta
+    feature_ids_b, update_values_b = tb
+    # indexs = np.argsort(feature_ids_b)
+    indexs = feature_ids_b.argsort()
+    sorted_update_values_b = update_values_b[indexs[::1]]
+    update_values_sum = update_values_a + sorted_update_values_b
     result = (feature_ids_a, update_values_sum)
     return result
 
@@ -386,7 +398,8 @@ if __name__ == "__main__":
         result_rdd = weight_update_rdd.join(invert_index_rdd, num_partitions)
         samples_update_rdd = result_rdd.flatMap(to_sample_update_pair).reduceByKey(add_features, numPartitions=num_partitions)
 
-        cur_rdd = cur_rdd.union(samples_update_rdd).reduceByKey(add_array_element).partitionBy(num_partitions)
+        #cur_rdd = cur_rdd.union(samples_update_rdd).reduceByKey(add_array_element).partitionBy(num_partitions)
+        cur_rdd = cur_rdd.join(samples_update_rdd, num_partitions).mapValues(merge_features).partitionBy(num_partitions)
 
         cur_samples_rdd = samples_rdd.join(cur_rdd, num_partitions)
 

@@ -408,8 +408,8 @@ if __name__ == "__main__":
         # force cur_rdd and cur_samples_rdd to be created
         num_cur_rdd = cur_rdd.count()
         num_cur_samples_rdd = cur_samples_rdd.count()
-        # ans = cur_samples_rdd.take(1)
-        # ans2 = cur_rdd.take(1)
+        # first_cur_rdd = cur_rdd.take(1)
+        # first_cur_samples_rdd = cur_samples_rdd.take(1)
 
         # decay step size to ensure convergence
         step_size *= 0.95

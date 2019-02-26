@@ -18,6 +18,7 @@ PROJ_PATH=`dirname $0`
 # --total-executor-cores 20
 # --conf spark.default.parallelism=63
 /root/spark/bin/spark-submit --driver-memory 5g --executor-memory 5g \
+ --total-executor-cores 64 \
  --conf spark.driver.cores=4 \
  --conf spark.driver.maxResultSize=10g \
 $PROJ_PATH/spark_sparse_lr.py $1 $2 $3 $4 $5

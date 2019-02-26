@@ -328,8 +328,8 @@ if __name__ == "__main__":
     reg_param = 0.01
 
     # total number of cores of your Spark slaves
-    num_cores = 4
-    # num_cores = 64 * 2 - 1
+    # num_cores = 4
+    num_cores = 64 * 4 - 1
     # for simplicity, the number of partitions is hardcoded
     # the number of partitions should be configured based on data size
     # and number of cores in your cluster
@@ -388,13 +388,13 @@ if __name__ == "__main__":
 
         # loss_updates_rdd_test = samples_rdd.mapPartitions(gd_partition_key_test_old)
         loss_updates_rdd_test = cur_samples_rdd.mapPartitions(gd_partition_key_test, preservesPartitioning=True)
-        my_loss = loss_updates_rdd_test.map(tuple_to_loss_only).reduce(lambda x, y: x + y)
+        my_loss = loss_updates_rdd_test.map(tuple_to_loss_only).treeReduce(lambda x, y: x + y, 7)
         my_loss_list.append(my_loss)
         tmp_0_rdd = loss_updates_rdd_test.map(tuple_to_list_only, preservesPartitioning=True) \
             .flatMap(lambda x: x) \
             .reduceByKey(lambda x, y: x + y, numPartitions=num_partitions)  # \
         #    .partitionBy(num_partitions)
-        weight_update_rdd = tmp_0_rdd.partitionBy(num_partitions)
+        weight_update_rdd = tmp_0_rdd  # .partitionBy(num_partitions)
         result_rdd = weight_update_rdd.join(invert_index_rdd, num_partitions)
 
         tmp_1_rdd = result_rdd.flatMap(to_sample_update_pair)
@@ -402,7 +402,7 @@ if __name__ == "__main__":
 
         #cur_rdd = cur_rdd.union(samples_update_rdd).reduceByKey(add_array_element).partitionBy(num_partitions)
         tmp_2_rdd = cur_rdd.join(samples_update_rdd, num_partitions).mapValues(merge_features)  # .partitionBy(num_partitions)
-        cur_rdd = tmp_2_rdd.partitionBy(num_partitions)
+        cur_rdd = tmp_2_rdd  # .partitionBy(num_partitions)
         cur_samples_rdd = samples_rdd.join(cur_rdd, num_partitions)
 
         # force cur_rdd and cur_samples_rdd to be created

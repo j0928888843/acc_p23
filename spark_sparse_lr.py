@@ -390,17 +390,19 @@ if __name__ == "__main__":
         loss_updates_rdd_test = cur_samples_rdd.mapPartitions(gd_partition_key_test, preservesPartitioning=True)
         my_loss = loss_updates_rdd_test.map(tuple_to_loss_only).reduce(lambda x, y: x + y)
         my_loss_list.append(my_loss)
-        weight_update_rdd = loss_updates_rdd_test.map(tuple_to_list_only, preservesPartitioning=True) \
+        tmp_0_rdd = loss_updates_rdd_test.map(tuple_to_list_only, preservesPartitioning=True) \
             .flatMap(lambda x: x) \
-            .reduceByKey(lambda x, y: x + y, numPartitions=num_partitions) \
-            .partitionBy(num_partitions)
-
+            .reduceByKey(lambda x, y: x + y, numPartitions=num_partitions)  # \
+        #    .partitionBy(num_partitions)
+        weight_update_rdd = tmp_0_rdd.partitionBy(num_partitions)
         result_rdd = weight_update_rdd.join(invert_index_rdd, num_partitions)
-        samples_update_rdd = result_rdd.flatMap(to_sample_update_pair).reduceByKey(add_features, numPartitions=num_partitions)
+
+        tmp_1_rdd = result_rdd.flatMap(to_sample_update_pair)
+        samples_update_rdd = tmp_1_rdd.reduceByKey(add_features, numPartitions=num_partitions)
 
         #cur_rdd = cur_rdd.union(samples_update_rdd).reduceByKey(add_array_element).partitionBy(num_partitions)
-        cur_rdd = cur_rdd.join(samples_update_rdd, num_partitions).mapValues(merge_features).partitionBy(num_partitions)
-
+        tmp_2_rdd = cur_rdd.join(samples_update_rdd, num_partitions).mapValues(merge_features)  # .partitionBy(num_partitions)
+        cur_rdd = tmp_2_rdd.partitionBy(num_partitions)
         cur_samples_rdd = samples_rdd.join(cur_rdd, num_partitions)
 
         # force cur_rdd and cur_samples_rdd to be created

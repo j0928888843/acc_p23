@@ -506,6 +506,7 @@ if __name__ == "__main__":
     fid_pids_rdd = pid_samples_rdd.map(to_fid_pid_list, preservesPartitioning=True) \
         .map(lambda t : t[0], preservesPartitioning=True).flatMap(lambda x: x) \
         .reduceByKey(list_add2) \
+        .partitionBy(num_partitions) \
         .persist(pyspark.storagelevel.StorageLevel.MEMORY_AND_DISK)
     # pid_fids_rdd (for wight distrubution part 2)
     pid_fids_rdd = pid_samples_rdd.map(to_fid_pid_list, preservesPartitioning=True)\
@@ -515,10 +516,16 @@ if __name__ == "__main__":
     cur_pid_fids_weights_rdd = pid_fids_rdd.map(init_feature_value, preservesPartitioning=True)
 
     # init cur_fid_weight_rdd
-    cur_fid_weight_rdd = fid_pids_rdd.map(init_cur_fid_weight, preservesPartitioning=True) \
+    # cur_fid_weight_rdd = fid_pids_rdd.map(init_cur_fid_weight, preservesPartitioning=True) \
 
     # init cur_pid_samples_fids_weights
     cur_pid_samples_fids_weights_rdd = pid_samples_rdd.join(cur_pid_fids_weights_rdd, num_partitions)
+
+    # force cur_pid_samples_fids_weights_rdd to be created
+    num_cur_pid_samples_fids_weights_rdd = cur_pid_samples_fids_weights_rdd.count()
+
+    # force cur_pid_fids_weights_rdd to be created
+    num_cur_pid_fids_weights_rdd = cur_pid_fids_weights_rdd.count()
 
     loss_list = []
     for iteration in range(0, num_iterations):
@@ -530,8 +537,8 @@ if __name__ == "__main__":
             break
         tmp_0_rdd = loss_updates_rdd.map(tuple_to_list_only, preservesPartitioning=True) \
             .flatMap(lambda x: x) \
-            .reduceByKey(lambda x, y: x + y, numPartitions=num_partitions)  # \
-        #    .partitionBy(num_partitions)
+            .reduceByKey(lambda x, y: x + y, numPartitions=num_partitions)   \
+            .partitionBy(num_partitions)
         fid_fval_rdd = tmp_0_rdd  # .partitionBy(num_partitions)
         fid_weight_pids_rdd = fid_fval_rdd.join(fid_pids_rdd, num_partitions)
 

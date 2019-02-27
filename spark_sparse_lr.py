@@ -488,7 +488,7 @@ if __name__ == "__main__":
 
     # total number of cores of your Spark slaves
     # num_cores = 4
-    num_cores = 64 * 16
+    num_cores = 64 * 2
     # for simplicity, the number of partitions is hardcoded
     # the number of partitions should be configured based on data size
     # and number of cores in your cluster

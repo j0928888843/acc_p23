@@ -514,7 +514,7 @@ if __name__ == "__main__":
     # pid_fids_rdd (for wight distrubution part 2)
     pid_fids_rdd = pid_samples_rdd.map(to_fid_pid_list, preservesPartitioning=True)\
         .map(lambda t : t[1], preservesPartitioning=True)  \
-        .partitionBy(num_partitions).persist(pyspark.storagelevel.StorageLevel.MEMORY_AND_DISK)
+        .partitionBy(num_partitions).persist(pyspark.storagelevel.StorageLevel.DISK_ONLY)
     # init feature values to 0.001
     cur_pid_fids_weights_rdd = pid_fids_rdd.map(init_feature_value, preservesPartitioning=True)
 
@@ -525,10 +525,10 @@ if __name__ == "__main__":
     cur_pid_samples_fids_weights_rdd = pid_samples_rdd.join(cur_pid_fids_weights_rdd, num_partitions)
 
     # force cur_pid_samples_fids_weights_rdd to be created
-    num_cur_pid_samples_fids_weights_rdd = cur_pid_samples_fids_weights_rdd.count()
+    # num_cur_pid_samples_fids_weights_rdd = cur_pid_samples_fids_weights_rdd.count()
 
     # force cur_pid_fids_weights_rdd to be created
-    num_cur_pid_fids_weights_rdd = cur_pid_fids_weights_rdd.count()
+    # num_cur_pid_fids_weights_rdd = cur_pid_fids_weights_rdd.count()
 
     loss_list = []
     for iteration in range(0, num_iterations):
@@ -555,8 +555,12 @@ if __name__ == "__main__":
         cur_pid_samples_fids_weights_rdd = pid_samples_rdd.join(cur_pid_fids_weights_rdd, num_partitions)
 
         # force rdd to be created
-        num_cur_pid_fids_weights_rdd = cur_pid_fids_weights_rdd.count()
-        num_cur_pid_samples_fids_weights_rdd = cur_pid_samples_fids_weights_rdd.count()
+        # num_cur_pid_fids_weights_rdd = cur_pid_fids_weights_rdd.count()
+        # num_cur_pid_samples_fids_weights_rdd = cur_pid_samples_fids_weights_rdd.count()
+
+        cur_pid_fids_weights_rdd.persist(pyspark.storagelevel.StorageLevel.DISK_ONLY)
+        cur_pid_samples_fids_weights_rdd.persist(pyspark.storagelevel.StorageLevel.DISK_ONLY)
+
         # first_cur_pid_fids_weight_rdd = cur_pid_fids_weight_rdd.take(1)
         # first_cur_pid_samples_fids_weights_rdd = cur_pid_samples_fids_weights_rdd.take(1)
 

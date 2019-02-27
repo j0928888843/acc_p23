@@ -499,10 +499,12 @@ if __name__ == "__main__":
 
     text_rdd = sc.textFile(data_path, minPartitions=num_partitions)
     # pid_samples_rdd (the input data)
-    pid_samples_rdd = text_rdd.map(parse_line)  # , preservesPartitioning=True) \
+    # , preservesPartitioning=True) \
+    # #.partitionBy(num_partitions)
+    pid_samples_rdd = text_rdd.map(parse_line)  \
         .mapPartitionsWithIndex(to_pid_samples_pair) \
-            #.partitionBy(num_partitions)
         .persist(pyspark.storagelevel.StorageLevel.DISK_ONLY)
+
     # fid_pids_rdd (inverted_index rdd pairs for weight distrbution)
     fid_pids_rdd = pid_samples_rdd.map(to_fid_pid_list, preservesPartitioning=True) \
         .map(lambda t : t[0], preservesPartitioning=True).flatMap(lambda x: x) \

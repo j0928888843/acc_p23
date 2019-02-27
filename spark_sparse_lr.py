@@ -488,7 +488,7 @@ if __name__ == "__main__":
 
     # total number of cores of your Spark slaves
     # num_cores = 4
-    num_cores = 64 * 4 - 4
+    num_cores = 64 * 64
     # for simplicity, the number of partitions is hardcoded
     # the number of partitions should be configured based on data size
     # and number of cores in your cluster
@@ -501,13 +501,13 @@ if __name__ == "__main__":
     # pid_samples_rdd (the input data)
     pid_samples_rdd = text_rdd.map(parse_line, preservesPartitioning=True) \
         .mapPartitionsWithIndex(to_pid_samples_pair) \
-        .partitionBy(num_partitions).persist(pyspark.storagelevel.StorageLevel.MEMORY_AND_DISK)
+        .partitionBy(num_partitions).persist(pyspark.storagelevel.StorageLevel.DISK_ONLY)
     # fid_pids_rdd (inverted_index rdd pairs for weight distrbution)
     fid_pids_rdd = pid_samples_rdd.map(to_fid_pid_list, preservesPartitioning=True) \
         .map(lambda t : t[0], preservesPartitioning=True).flatMap(lambda x: x) \
         .reduceByKey(list_add2) \
         .partitionBy(num_partitions) \
-        .persist(pyspark.storagelevel.StorageLevel.MEMORY_AND_DISK)
+        .persist(pyspark.storagelevel.StorageLevel.DISK_ONLY)
     # pid_fids_rdd (for wight distrubution part 2)
     pid_fids_rdd = pid_samples_rdd.map(to_fid_pid_list, preservesPartitioning=True)\
         .map(lambda t : t[1], preservesPartitioning=True)  \

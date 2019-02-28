@@ -57,131 +57,6 @@ def safe_log(x):
         x = 1e-15
     return math.log(x)
 
-# compute the gradient descent updates and cross-entropy loss for an RDD partition
-
-
-# def gd_partition(samples):
-#     local_updates = defaultdict(float)
-#     local_weights_array = weights_array_bc.value
-#     cross_entropy_loss = 0
-
-#     # compute and accumulate updates for each data sample in the partition
-#     for sample in samples:
-#         label = sample[0]
-#         features = sample[1]
-#         feature_ids = features[0]
-#         feature_vals = features[1]
-#         # fetch the relevant weights for this sample as a numpy array
-#         local_weights = np.take(local_weights_array, feature_ids)
-#         # given the current weights, the probability of this sample belonging to
-#         # class '1'
-#         pred = sigmoid(feature_vals.dot(local_weights))
-#         diff = label - pred
-#         # the L2-regularlized gradients
-#         gradient = diff * feature_vals - reg_param * local_weights
-#         sample_update = step_size * gradient
-
-#         for i in range(0, feature_ids.size):
-#             local_updates[feature_ids[i]] += sample_update[i]
-
-#         # compute the cross-entropy loss, which is an indirect measure of the
-#         # objective function that the gradient descent algorithm optimizes for
-#         if label == 1:
-#             cross_entropy_loss -= safe_log(pred)
-#         else:
-#             cross_entropy_loss -= safe_log(1 - pred)
-#     accumulated_updates = sps.csr_matrix(
-#         (local_updates.values(),
-#          local_updates.keys(),
-#          [0, len(local_updates)]),
-#         shape=(1, num_features))
-#     return [(cross_entropy_loss, accumulated_updates)]
-
-
-# def gd_partition_key(samples):
-#     local_updates = defaultdict(float)
-#     local_weights_array = weights_array_bc.value
-#     cross_entropy_loss = 0
-
-#     # compute and accumulate updates for each data sample in the partition
-#     for sample in samples:
-#         (key, value) = sample
-#         label = value[0]
-#         features = value[1]
-#         feature_ids = features[0]
-#         feature_vals = features[1]
-#         # fetch the relevant weights for this sample as a numpy array
-#         local_weights = np.take(local_weights_array, feature_ids)
-#         # given the current weights, the probability of this sample belonging to
-#         # class '1'
-#         pred = sigmoid(feature_vals.dot(local_weights))
-#         diff = label - pred
-#         # the L2-regularlized gradients
-#         gradient = diff * feature_vals - reg_param * local_weights
-#         sample_update = step_size * gradient
-
-#         for i in range(0, feature_ids.size):
-#             local_updates[feature_ids[i]] += sample_update[i]
-
-#         # compute the cross-entropy loss, which is an indirect measure of the
-#         # objective function that the gradient descent algorithm optimizes for
-#         if label == 1:
-#             cross_entropy_loss -= safe_log(pred)
-#         else:
-#             cross_entropy_loss -= safe_log(1 - pred)
-#     accumulated_updates = sps.csr_matrix(
-#         (local_updates.values(),
-#          local_updates.keys(),
-#          [0, len(local_updates)]),
-#         shape=(1, num_features))
-#     return [(cross_entropy_loss, accumulated_updates)]
-
-
-# def gd_partition_key_test(samples):
-#     local_updates = defaultdict(float)
-#     # local_weights_array = weights_array_bc.value
-#     cross_entropy_loss = 0
-
-#     # compute and accumulate updates for each data sample in the partition
-#     for sample in samples:
-#         key, payload = sample
-#         value, update = payload
-#         label, features = value
-
-#         feature_ids = features[0]
-#         feature_vals = features[1]
-#         update_feature_ids = update[0]
-#         update_weight_vals = update[1]
-
-#         # fetch the relevant weights for this sample as a numpy array
-
-#         #local_weights = np.take(local_weights_array, feature_ids)
-#         local_weights = update_weight_vals
-
-#         # given the current weights, the probability of this sample belonging to
-#         # class '1'
-#         pred = sigmoid(feature_vals.dot(local_weights))
-#         diff = label - pred
-#         # the L2-regularlized gradients
-#         gradient = diff * feature_vals - reg_param * local_weights
-#         sample_update = step_size * gradient
-
-#         for i in range(0, feature_ids.size):
-#             local_updates[feature_ids[i]] += sample_update[i]
-
-#         # compute the cross-entropy loss, which is an indirect measure of the
-#         # objective function that the gradient descent algorithm optimizes for
-#         if label == 1:
-#             cross_entropy_loss -= safe_log(pred)
-#         else:
-#             cross_entropy_loss -= safe_log(1 - pred)
-
-#     result_update_list = []
-#     for feature_id, local_update in local_updates.iteritems():
-#         result_update_list.append((feature_id, local_update))
-#     return [(cross_entropy_loss, result_update_list)]
-
-
 def tuple_to_loss_only(t):
     cross_entropy_loss = t[0]
     return cross_entropy_loss
@@ -192,59 +67,9 @@ def tuple_to_list_only(t):
     return update_list_t
 
 
-# def sample_to_weight_sample_list_pair(t):
-#     (k, v) = t
-
-#     # key = hash(sample string)
-#     # value = (label, (np.array(feature_ids), np.array(feature_vals)))
-
-#     label, features = v
-#     feature_ids = features[0]
-#     # veature_vals = features[1]
-
-#     result_list = []
-#     for feature_id in feature_ids:
-#         result_list.append((feature_id, [k]))
-#     return result_list
-
-
-# def list_add(l1, l2):
-#     # return l1.extend(l2)
-#     s1 = set(l1)
-#     s2 = set(l2)
-#     s_sum = s1.union(s2)
-#     return list(s_sum)
-
-
-# def list_add(l1, l2):
-
-#     return l1 + l2
-
 def list_add2(l1, l2):
 
     return l1 + l2
-
-# def to_sample_update_pair(t):
-#     key, value = t  # key is feature_id, value is (update_value, [hash(sample1),....])
-#     feature_id = key
-#     update_value = value[0]
-#     hash_sample_list = value[1]
-#     results = []  # each element is ( hash(sample), feature_id:update_value )
-#     for hash_sample in hash_sample_list:
-#         a = feature_id
-#         # b = np.array(float(update_value))
-#         b = update_value
-#         results.append((hash_sample, (a, b)))
-
-#     return results
-
-
-# def add_features(ta, tb):
-#     feature_ids_a, update_values_a = ta
-#     feature_ids_b, update_values_b = tb
-#     feature_ids_sum = np.append(feature_ids_a, feature_ids_b)
-#     update_values_sum = np.append(update_values_a, update_values_b)
-#     return (feature_ids_sum, update_values_sum)
 
 
 def add_features2(ta, tb):
@@ -254,13 +79,6 @@ def add_features2(ta, tb):
     update_values_sum = np.append(update_values_a, update_values_b)
     return (feature_ids_sum, update_values_sum)
 
-# def test(t):
-#     k, v = t
-#     main = v[0]
-#     update = v[1]
-#     return update
-
-
 def add_array_element(ta, tb):
     feature_ids_a, update_values_a = ta
     feature_ids_b, update_values_b = tb
@@ -268,18 +86,6 @@ def add_array_element(ta, tb):
 
     result = (feature_ids_a, update_values_sum)
     return result
-
-
-# def merge_features(value):
-#     ta, tb = value
-#     feature_ids_a, update_values_a = ta
-#     feature_ids_b, update_values_b = tb
-#     # indexs = np.argsort(feature_ids_b)
-#     indexs = feature_ids_b.argsort()
-#     sorted_update_values_b = update_values_b[indexs[::1]]
-#     update_values_sum = update_values_a + sorted_update_values_b
-#     result = (feature_ids_a, update_values_sum)
-#     return result
 
 
 def merge_features2(value):
@@ -302,23 +108,6 @@ def merge_features2(value):
 
 def to_pid_samples_pair(pid, samples):
     return [(pid, list(samples))]
-
-
-# def to_pid_samples_pair_tt(samples):
-#     # below 3 approach gets same results
-#     # 1.
-#     #
-#     # l = []
-#     # for sample in samples:
-#     #     l.append(sample)
-#     # return [l]
-#     #
-#     # 2.
-#     # yield list(samples)
-#     #
-#     # 3.
-#     return [list(samples)]
-
 
 def to_fid_pid_list(t):  # generate  (feature_id,[pid]) and (pid, fid_array) for invert index
     pid, samples = t
@@ -384,11 +173,6 @@ def gd_partition_new(t):
             temp_list.append(weight_dict[j])
 
         local_weights = np.array(temp_list)
-
-        # fetch the relevant weights for this sample as a numpy array
-
-        #local_weights = np.take(local_weights_array, feature_ids)
-        # local_weights = update_weight_vals
 
         # given the current weights, the probability of this sample belonging to
         # class '1'
